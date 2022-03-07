@@ -1,7 +1,7 @@
-# qemu-arch-linux-automation
+# vmctl
 
-Scripts and playbooks to automate the installation, configuration and
-management of Arch Linux VMs in qemu.
+`vmctl` is a script that automates the installation, provisioning and
+management of Arch Linux virtual machines.
 
 ## Dependencies
 
@@ -11,33 +11,59 @@ management of Arch Linux VMs in qemu.
 
 ## Installation
 
-- Add the path to the `src` directory to your `PATH` environment variable
-- Create a symbolic link to `src/` directory to your `PATH` environment variable
+Just copy the `vmctl` script anywhere in your `PATH`, or clone the repository
+and create a symbolic link to `vmctl` in your `PATH`.
 
 ## Usage
 
 ### Install an Arch Linux virtual machine
 
+The `vmctl install` command can be used to create an Arch Linux virtual machine
+on the fly, wherever you are. It does the following:
+
+- It downloads the latest Arch Linux installer ISO image if none was downloaded
+  or a new one is available.
+- It creates a `qemu` disk file.
+- It boots a new KVM that uses the ISO file as as CDROM and automates the
+  installation of Arch Linux in the virtual machine (no user prompt required).
+- It can install extra packages and run custom post-installation provisioning scripts.
+
 ```text
-Usage: qemu-arch install [-o <output-disk-image>] [-a <architecture>] [-s <disk-size>]
+Usage: vmctl install [-o <output-disk-image>] [-a <architecture>] [-s <disk-size>]
         [-m <memory>] [-h <hostname>] [-P <root-password>] [-u <non-root-username>]
         [-p <non-root-user-password>] [-z <timezone>] [-l <locale>] [-M <arch-mirror-url>]
 
--o <output-disk-image>          Path of the output disk image (default: ./arch.img)
--a <architecture>               Target architecture (default: x86_64)
--s <disk-size>                  Disk size (default: 8G)
--m <memory>                     RAM size in KB (default: 2048)
--h <hostname>                   VM hostname (default: qemu)
--P <root-password>              Root password. If not specified it will be prompted
--u <non-root-username>          Username for the main non-root user
--p <non-root-user-password>     Password for the non-root user. If not specified
-                                it will be prompted
--z <timezone>                   System timezone (default: UTC)
--l <locale>                     System locale (default: en_US.UTF-8)
--M <arch-mirror-url>            Arch Linux download mirror URL
-                                (default: http://mirror.cj2.nl/archlinux/iso/latest/)
-                                Consult https://archlinux.org/download/ for a
-                                full list of the available download mirrors.
+-o      <output-disk-image>             Path of the output disk image (default: ./arch.img)
+-a      <architecture>                  Target architecture (default: x86_64)
+-s      <disk-size>                     Disk size (default: 8G)
+-m      <memory>                        RAM size in KB (default: 2048)
+-h      <hostname>                      VM hostname (default: qemu)
+-P      <root-password>                 Root password. If not specified it will be prompted
+-u      <non-root-username>             Username for the main non-root user
+-p      <non-root-user-password>        Password for the non-root user. If not specified it will be prompted
+-z      <timezone>                      System timezone (default: UTC)
+-l      <locale>                        System locale (default: en_US.UTF-8)
+-M      <arch-mirror-url>               Arch Linux download mirror URL (default: http://mirror.cj2.nl/archlinux/iso/latest/)
+                                        Consult https://archlinux.org/download/ for a full list of the available download mirrors.
+```
+
+If a required option is not specified on the command line then it will be
+interactively prompted to the user (defaults are available for most of the
+options).
+
+Non-interactive example:
+
+```bash
+vmctl install \
+    -h my_vm \
+    -a x86_64 \
+    -s 16G \
+    -m 2048 \
+    -P root \
+    -u myuser \
+    -p password \
+    -z Europe/Amsterdam \
+    -o arch-base.img
 ```
 
 If you want to install an extra list of packages besides the default ones, then
@@ -51,11 +77,6 @@ as the disk image file.
 
 The keyring population process may currently (as of March 2022) take a long time.
 This is a [known issue](https://www.reddit.com/r/archlinux/comments/rbjbcr/pacman_keyring_update_taking_too_long/).
-
-As a workaround, if you want to speed up the OS installation process, you can
-temporarily disable pacman keyring checks upon package installation by
-uncommenting the relevant lines in `src/helpers/install.sh` (function:
-`install_os`).
 
 ### Resize an existing image
 
