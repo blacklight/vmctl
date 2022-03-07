@@ -32,6 +32,7 @@ on the fly, wherever you are. It does the following:
 Usage: vmctl install [-o <output-disk-image>] [-a <architecture>] [-s <disk-size>]
         [-m <memory>] [-h <hostname>] [-P <root-password>] [-u <non-root-username>]
         [-p <non-root-user-password>] [-z <timezone>] [-l <locale>] [-M <arch-mirror-url>]
+        [-K] [extra qemu arguments]
 
 -o      <output-disk-image>             Path of the output disk image (default: ./arch.img)
 -a      <architecture>                  Target architecture (default: x86_64)
@@ -45,6 +46,8 @@ Usage: vmctl install [-o <output-disk-image>] [-a <architecture>] [-s <disk-size
 -l      <locale>                        System locale (default: en_US.UTF-8)
 -M      <arch-mirror-url>               Arch Linux download mirror URL (default: http://mirror.cj2.nl/archlinux/iso/latest/)
                                         Consult https://archlinux.org/download/ for a full list of the available download mirrors.
+-K                                      Disable pacman keyring checks during installation. It's potentially unsafe,
+                                        but it can be an option if downloading the keys takes too long.
 ```
 
 If a required option is not specified on the command line then it will be

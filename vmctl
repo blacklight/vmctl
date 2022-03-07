@@ -40,6 +40,7 @@ root_password=
 username=
 user_password=
 timezone=
+disable_keyring_checks=0
 locale="$default_locale"
 img_download_page="$default_img_download_page"
 
@@ -49,6 +50,7 @@ function install_usage() {
     echo "Usage: $(basename "$0") install [-o <output-disk-image>] [-a <architecture>] [-s <disk-size>]"
     echo -e "\t[-m <memory>] [-h <hostname>] [-P <root-password>] [-u <non-root-username>]"
     echo -e "\t[-p <non-root-user-password>] [-z <timezone>] [-l <locale>] [-M <arch-mirror-url>]"
+    echo -e "\t[-K] [extra qemu arguments]"
     echo
     echo -e "-o\t<output-disk-image>\t\tPath of the output disk image (default: ./arch.img)"
     echo -e "-a\t<architecture>\t\t\tTarget architecture (default: x86_64)"
@@ -62,6 +64,8 @@ function install_usage() {
     echo -e "-l\t<locale>\t\t\tSystem locale (default: en_US.UTF-8)"
     echo -e "-M\t<arch-mirror-url>\t\tArch Linux download mirror URL (default: http://mirror.cj2.nl/archlinux/iso/latest/)"
     echo -e "\t\t\t\t\tConsult https://archlinux.org/download/ for a full list of the available download mirrors."
+    echo -e "-K\t\t\t\t\tDisable pacman keyring checks during installation. It's potentially unsafe,"
+    echo -e "\t\t\t\t\tbut it can be an option if downloading the keys takes too long."
     echo
     echo "If you want to install an extra list of packages besides the default ones, then"
     echo "specify them in a file named PKGLIST in the same directory as the disk image file."
@@ -245,21 +249,24 @@ $(cat "$pkgfile")"
         send -- "mkinitcpio -P\r"
         expect \$chroot_prompt
 
-        # Update the keyring
-        # This may currently currently take a long time
-        # see https://www.reddit.com/r/archlinux/comments/rbjbcr/pacman_keyring_update_taking_too_long/
-        send -- "pacman-key --init\r"
-        expect \$chroot_prompt
-        send -- "pacman-key --populate archlinux\r"
-        expect \$chroot_prompt
-        send -- "pacman-key --refresh-keys\r"
+        send -- "cp /etc/pacman.conf /etc/pacman.conf.orig\r"
         expect \$chroot_prompt
 
-        # As a workaround, you can temporarily disable signature check on pacman.conf
-        #send -- "cp /etc/pacman.conf /etc/pacman.conf.orig\r"
-        #expect \$chroot_prompt
-        #send -- "sed -i /etc/pacman.conf -r -e 's/^(SigLevel\\\\s*=\\\\s*).*$/\\\\1 Never/g'\r"
-        #expect \$chroot_prompt
+        if {$disable_keyring_checks == 0} {
+            # Update the keyring
+            # This may currently currently take a long time
+            # see https://www.reddit.com/r/archlinux/comments/rbjbcr/pacman_keyring_update_taking_too_long/
+            send -- "pacman-key --init\r"
+            expect \$chroot_prompt
+            send -- "pacman-key --populate archlinux\r"
+            expect \$chroot_prompt
+            send -- "pacman-key --refresh-keys\r"
+            expect \$chroot_prompt
+        } else {
+            # Disable signature check on pacman.conf
+            send -- "sed -i /etc/pacman.conf -r -e 's/^(SigLevel\\\\s*=\\\\s*).*$/\\\\1 Never/g'\r"
+            expect \$chroot_prompt
+        }
 
         # Install extra packages
         send -- {echo "$packages" | pacman -S --noconfirm -}
@@ -276,10 +283,6 @@ $(cat "$pkgfile")"
         send -- "sed -i /boot/syslinux/syslinux.cfg -e '1i SERIAL 0 115200'\r"
         expect \$chroot_prompt
         send -- "sed -i /boot/syslinux/syslinux.cfg -e 's|APPEND root=/dev/sda3|APPEND console=tty0 console=ttyS0,115200 root=/dev/sda1|g'\r"
-        expect \$chroot_prompt
-
-        # Restore the original pacman.conf
-        send -- "mv /etc/pacman.conf.orig /etc/pacman.conf\r"
         expect \$chroot_prompt
 
         # Set the root password
@@ -339,6 +342,10 @@ _EOF_
         send -- "\r"
         expect \$chroot_prompt
 
+        # Restore the original pacman.conf
+        send -- "mv /etc/pacman.conf.orig /etc/pacman.conf\r"
+        expect \$chroot_prompt
+
         # Clear the pacman cache
         send -- "rm -rf /var/cache/pacman/pkg/*\r"
         expect \$chroot_prompt
@@ -358,7 +365,7 @@ EOF
 }
 
 function install() {
-    optstring=':o:a:s:m:h:P:u:p:z:l:M:'
+    optstring=':o:a:s:m:h:P:u:p:z:l:M:K'
     [[ "$1" == '--help' ]] && install_usage
 
     while getopts ${optstring} arg; do
@@ -374,6 +381,7 @@ function install() {
             z) timezone="${OPTARG}";;
             l) locale="${OPTARG}";;
             M) img_download_page="${OPTARG}";;
+            K) disable_keyring_checks=1;;
             ?)
                 echo "Invalid option: -${OPTARG}" >&2
                 install_usage;;
