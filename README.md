@@ -57,7 +57,7 @@ temporarily disable pacman keyring checks upon package installation by
 uncommenting the relevant lines in `src/helpers/install.sh` (function:
 `install_os`).
 
-### Resizing an existing image
+### Resize an existing image
 
 ```bash
 qemu-img resize "$imgfile" +10G
@@ -71,3 +71,9 @@ qemu-img create -o backing_file="$imgfile",backing_fmt=raw -f qcow2 img1.cow
 
 This is particularly useful if you want to have a "base" image and several customized
 images built on it.
+
+### Convert a raw qemu image to a VirtualBox
+
+```bash
+qemu-img convert -O vdi disk.img disk.vdi
+```
